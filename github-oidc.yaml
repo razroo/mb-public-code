@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Makebind - GitHub Actions OIDC Integration for AWS'
+
+Parameters:
+  GitHubOrg:
+    Type: String
+    Description: GitHub organization or username
+
+  RepositoryName:
+    Type: String
+    Description: GitHub repository name (e.g., my-repo or * for all repos)
+    Default: '*'
+
+Resources:
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+        - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
+
+  GitHubActionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: MakebindGitHubActionsRole
+      Description: Role used by GitHub Actions to deploy infrastructure via Makebind
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !GetAtt GitHubOIDCProvider.Arn
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub: !Sub 'repo:${GitHubOrg}/${RepositoryName}:*'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+      MaxSessionDuration: 3600
+
+Outputs:
+  RoleArn:
+    Description: ARN of the IAM Role for GitHub Actions (paste this back in Makebind chat)
+    Value: !GetAtt GitHubActionsRole.Arn
+    Export:
+      Name: MakebindGitHubActionsRoleArn
+
+  OIDCProviderArn:
+    Description: ARN of the OIDC Provider
+    Value: !GetAtt GitHubOIDCProvider.Arn
