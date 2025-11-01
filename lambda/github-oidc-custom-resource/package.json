@@ -1,0 +1,18 @@
+{
+  "name": "github-oidc-custom-resource",
+  "version": "1.0.0",
+  "description": "CloudFormation custom resource for GitHub OIDC setup",
+  "main": "index.js",
+  "scripts": {
+    "build": "npm run clean && mkdir -p dist && cp -r src/* dist/ && cp package.json dist/",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "cloudformation",
+    "custom-resource",
+    "github",
+    "oidc"
+  ],
+  "author": "",
+  "license": "ISC"
+}

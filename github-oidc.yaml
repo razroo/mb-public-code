@@ -1,15 +1,21 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Makebind - GitHub Actions OIDC Integration for AWS'
+Transform: AWS::Serverless-2016-10-31
+Description: 'Makebind - GitHub Actions OIDC Integration for AWS (Organization-Wide Setup)'
 
 Parameters:
   GitHubOrg:
     Type: String
-    Description: GitHub organization or username
+    Description: GitHub organization or username (e.g., razroo)
 
   RepositoryName:
     Type: String
-    Description: GitHub repository name (e.g., my-repo or * for all repos)
+    Description: Repository name pattern - use '*' for all repos in the org (recommended), or specify a single repo name
     Default: '*'
+
+  CallbackUrl:
+    Type: String
+    Description: Razroo API endpoint for automatic GitHub configuration (leave default for production)
+    Default: 'https://prod.graphql.razroo.com/prod/githubOidcCallback'
 
 Resources:
   GitHubOIDCProvider:
@@ -43,13 +49,48 @@ Resources:
         - arn:aws:iam::aws:policy/AdministratorAccess
       MaxSessionDuration: 3600
 
+  GitHubOIDCCustomResourceFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs22.x
+      CodeUri: lambda/github-oidc-custom-resource
+      Description: Custom resource handler for GitHub OIDC setup
+      Timeout: 60
+      FunctionName: !Sub ${AWS::StackName}-GitHubOIDCCustomResourceFunction
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: '*'
+
+  CustomResourceInvocation:
+    Type: Custom::OIDCSetup
+    Properties:
+      ServiceToken: !GetAtt GitHubOIDCCustomResourceFunction.Arn
+      GitHubOrg: !Ref GitHubOrg
+      RepositoryName: !Ref RepositoryName
+      OIDCProviderArn: !GetAtt GitHubOIDCProvider.Arn
+      RoleArn: !GetAtt GitHubActionsRole.Arn
+      CallbackUrl: !Ref CallbackUrl
+
 Outputs:
   RoleArn:
-    Description: ARN of the IAM Role for GitHub Actions (paste this back in Makebind chat)
+    Description: 'ARN of the IAM Role for GitHub Actions. If automatic configuration succeeded, this has been saved to your GitHub organization. Otherwise, paste this in Makebind chat to complete setup.'
     Value: !GetAtt GitHubActionsRole.Arn
     Export:
       Name: MakebindGitHubActionsRoleArn
 
   OIDCProviderArn:
-    Description: ARN of the OIDC Provider
+    Description: ARN of the OIDC Provider for GitHub Actions
     Value: !GetAtt GitHubOIDCProvider.Arn
+
+  TrustedRepos:
+    Description: GitHub repositories that can assume this role
+    Value: !Sub '${GitHubOrg}/${RepositoryName}'

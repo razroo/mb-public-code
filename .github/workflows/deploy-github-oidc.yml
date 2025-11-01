@@ -1,0 +1,52 @@
+name: Deploy GitHub OIDC Template
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  package-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: SAM Build
+        run: |
+          sam build \
+            --template-file github-oidc.yaml \
+            --base-dir .
+
+      - name: SAM Package
+        run: |
+          sam package \
+            --template-file .aws-sam/build/template.yaml \
+            --s3-bucket aws-sam-cli-managed-default-samclisourcebucket-2cpjaon9qurs \
+            --s3-prefix makebind-github-oidc \
+            --output-template-file github-oidc-packaged.yaml
+
+      - name: Upload packaged template to S3
+        run: |
+          aws s3 cp github-oidc-packaged.yaml \
+            s3://aws-sam-cli-managed-default-samclisourcebucket-2cpjaon9qurs/makebind-github-oidc/github-oidc-packaged.yaml \
+            --acl public-read
+
+      - name: Generate Quick Create URL
+        run: |
+          TEMPLATE_URL="https://aws-sam-cli-managed-default-samclisourcebucket-2cpjaon9qurs.s3.amazonaws.com/makebind-github-oidc/github-oidc-packaged.yaml"
+          echo "Quick Create URL:"
+          echo "https://console.aws.amazon.com/cloudformation/home#/stacks/quickcreate?templateURL=${TEMPLATE_URL}&stackName=MakebindGitHubOIDC&param_GitHubOrg=YOUR_GITHUB_ORG&param_RepositoryName=*"
