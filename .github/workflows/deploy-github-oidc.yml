@@ -42,8 +42,7 @@ jobs:
       - name: Upload packaged template to S3
         run: |
           aws s3 cp github-oidc-packaged.yaml \
-            s3://razroo-make-bind-public/github-oidc.yaml \
-            --acl public-read
+            s3://razroo-make-bind-public/github-oidc.yaml
 
       - name: Generate Quick Create URL
         run: |
