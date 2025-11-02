@@ -35,18 +35,18 @@ jobs:
         run: |
           sam package \
             --template-file .aws-sam/build/template.yaml \
-            --s3-bucket aws-sam-cli-managed-default-samclisourcebucket-2cpjaon9qurs \
+            --s3-bucket razroo-make-bind-public \
             --s3-prefix makebind-github-oidc \
             --output-template-file github-oidc-packaged.yaml
 
       - name: Upload packaged template to S3
         run: |
           aws s3 cp github-oidc-packaged.yaml \
-            s3://aws-sam-cli-managed-default-samclisourcebucket-2cpjaon9qurs/makebind-github-oidc/github-oidc-packaged.yaml \
+            s3://razroo-make-bind-public/github-oidc.yaml \
             --acl public-read
 
       - name: Generate Quick Create URL
         run: |
-          TEMPLATE_URL="https://aws-sam-cli-managed-default-samclisourcebucket-2cpjaon9qurs.s3.amazonaws.com/makebind-github-oidc/github-oidc-packaged.yaml"
+          TEMPLATE_URL="https://razroo-make-bind-public.s3.amazonaws.com/github-oidc.yaml"
           echo "Quick Create URL:"
           echo "https://console.aws.amazon.com/cloudformation/home#/stacks/quickcreate?templateURL=${TEMPLATE_URL}&stackName=MakebindGitHubOIDC&param_GitHubOrg=YOUR_GITHUB_ORG&param_RepositoryName=*"
