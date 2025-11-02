@@ -15,7 +15,7 @@ Parameters:
   CallbackUrl:
     Type: String
     Description: Razroo API endpoint for automatic GitHub configuration (leave default for production)
-    Default: 'https://prod.graphql.razroo.com/prod/githubOidcCallback'
+    Default: 'https://w7tbk6sceb.execute-api.us-east-1.amazonaws.com/prod/githubOidcCallback'
 
 Resources:
   GitHubOIDCProvider:
