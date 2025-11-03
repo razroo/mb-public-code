@@ -7,6 +7,10 @@ Parameters:
     Type: String
     Description: GitHub organization or username (e.g., razroo)
 
+  RazrooOrgId:
+    Type: String
+    Description: Razroo organization ID (e.g., razroo-org-123)
+
   RepositoryName:
     Type: String
     Description: Repository name pattern - use '*' for all repos in the org (recommended), or specify a single repo name
@@ -75,6 +79,7 @@ Resources:
     Properties:
       ServiceToken: !GetAtt GitHubOIDCCustomResourceFunction.Arn
       GitHubOrg: !Ref GitHubOrg
+      RazrooOrgId: !Ref RazrooOrgId
       RepositoryName: !Ref RepositoryName
       OIDCProviderArn: !GetAtt GitHubOIDCProvider.Arn
       RoleArn: !GetAtt GitHubActionsRole.Arn

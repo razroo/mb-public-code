@@ -19,6 +19,7 @@ exports.handler = async (event, context) => {
 
   const {
     GitHubOrg,
+    RazrooOrgId,
     RepositoryName,
     OIDCProviderArn,
     RoleArn,
@@ -28,21 +29,28 @@ exports.handler = async (event, context) => {
   let status = 'SUCCESS';
   let responseData = {};
   let reason = '';
+  // Use RazrooOrgId as physical resource ID to track it across updates
+  let physicalResourceId = event.PhysicalResourceId || `oidc-${RazrooOrgId}-${Date.now()}`;
 
   try {
     if (RequestType === 'Create') {
       console.log('Stack creation - Running custom setup logic');
       console.log(`GitHub Org: ${GitHubOrg}`);
+      console.log(`Razroo Org ID: ${RazrooOrgId}`);
       console.log(`Repository: ${RepositoryName}`);
       console.log(`OIDC Provider ARN: ${OIDCProviderArn}`);
       console.log(`Role ARN: ${RoleArn}`);
       console.log(`Callback URL: ${CallbackUrl}`);
+
+      // Store RazrooOrgId in physical resource ID for validation on updates
+      physicalResourceId = `oidc-${RazrooOrgId}`;
 
       // Call the Razroo API to automatically configure GitHub Actions variable
       if (CallbackUrl) {
         try {
           await callRazrooCallback(CallbackUrl, {
             githubOrg: GitHubOrg,
+            razrooOrgId: RazrooOrgId,
             roleArn: RoleArn,
             oidcProviderArn: OIDCProviderArn,
             repositoryName: RepositoryName,
@@ -60,6 +68,7 @@ exports.handler = async (event, context) => {
       responseData = {
         Message: 'GitHub OIDC setup completed successfully',
         GitHubOrg,
+        RazrooOrgId,
         RepositoryName,
         Timestamp: new Date().toISOString(),
         ...responseData
@@ -70,9 +79,18 @@ exports.handler = async (event, context) => {
     } else if (RequestType === 'Update') {
       console.log('Stack update - Running update logic');
 
+      // Validate that RazrooOrgId hasn't changed
+      const existingRazrooOrgId = event.PhysicalResourceId?.replace('oidc-', '');
+      if (existingRazrooOrgId && existingRazrooOrgId !== RazrooOrgId) {
+        throw new Error(`RazrooOrgId cannot be changed after initial setup. Original: ${existingRazrooOrgId}, Attempted: ${RazrooOrgId}. Please create a new stack instead.`);
+      }
+
+      console.log(`RazrooOrgId validation passed: ${RazrooOrgId}`);
+
       // Handle updates if needed
       responseData = {
-        Message: 'GitHub OIDC configuration updated successfully'
+        Message: 'GitHub OIDC configuration updated successfully',
+        RazrooOrgId
       };
 
       reason = 'Custom resource update completed successfully';
@@ -96,17 +114,17 @@ exports.handler = async (event, context) => {
   }
 
   // Send response back to CloudFormation
-  await sendResponse(event, context, status, responseData, reason);
+  await sendResponse(event, context, status, responseData, reason, physicalResourceId);
 };
 
 /**
  * Send response to CloudFormation
  */
-async function sendResponse(event, context, status, responseData, reason) {
+async function sendResponse(event, context, status, responseData, reason, physicalResourceId) {
   const responseBody = JSON.stringify({
     Status: status,
     Reason: reason || `See CloudWatch Log Stream: ${context.logStreamName}`,
-    PhysicalResourceId: context.logStreamName,
+    PhysicalResourceId: physicalResourceId || context.logStreamName,
     StackId: event.StackId,
     RequestId: event.RequestId,
     LogicalResourceId: event.LogicalResourceId,
