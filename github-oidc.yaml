@@ -57,6 +57,7 @@ Resources:
     Type: AWS::Serverless::Function
     Metadata:
       BuildMethod: makefile
+      aws:asset:region: us-east-1
     Properties:
       Handler: index.handler
       Runtime: nodejs22.x
@@ -64,6 +65,9 @@ Resources:
       Description: Custom resource handler for GitHub OIDC setup
       Timeout: 60
       FunctionName: !Sub ${AWS::StackName}-GitHubOIDCCustomResourceFunction
+      Environment:
+        Variables:
+          AWS_REGION_OVERRIDE: us-east-1
       Policies:
         - Version: '2012-10-17'
           Statement:
